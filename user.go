@@ -4,16 +4,26 @@ import (
 	"encoding/json"
 )
 
+type UserResource struct {
+	token string
+}
+
+func NewUserResource(token string) UserResource {
+	return UserResource{
+		token: token,
+	}
+}
+
 // userResponse holds the response from /user/secret and
 // /user/api_token
 type userResponse struct {
 	Result string `json:"result"`
 }
 
-// UserSecret returns the user's secret RSS key (for viewing private
+// Secret returns the user's secret RSS key (for viewing private
 // feeds).
-func UserSecret() (string, error) {
-	resp, err := get("userSecret", nil)
+func (r UserResource) Secret() (string, error) {
+	resp, err := get(userSecret, r.token, nil)
 	if err != nil {
 		return "", err
 	}
@@ -27,10 +37,10 @@ func UserSecret() (string, error) {
 	return ur.Result, nil
 }
 
-// UserAPIToken returns the user's API token (for making API calls
+// APIToken returns the user's API token (for making API calls
 // without a password).
-func UserAPIToken() (string, error) {
-	resp, err := get("userAPIToken", nil)
+func (r UserResource) APIToken() (string, error) {
+	resp, err := get(userAPIToken, r.token, nil)
 	if err != nil {
 		return "", err
 	}

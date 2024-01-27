@@ -6,24 +6,24 @@
 //
 // Function names mirror the API endpoints. For example:
 //
-//     PostsAdd() calls the /posts/add method
-//     TagsDelete() calls the /tags/delete method
+//	PostsAdd() calls the /posts/add method
+//	TagsDelete() calls the /tags/delete method
 //
 // If a method supports optional arguments then a MethodOptions struct
 // allows you to specify those options to pass to said method. For
 // example:
 //
-//     PostsAdd(&PostsAddOptions{})
-//     PostsGet(&PostsGetOptions{})
+//	PostsAdd(&PostsAddOptions{})
+//	PostsGet(&PostsGetOptions{})
 //
 // Not all endpoints require arguments, in which case just pass nil.
 //
-//     PostsAll(nil)
+//	PostsAll(nil)
 package pinboard
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -32,47 +32,43 @@ import (
 	"time"
 )
 
+type endpoint string
+
+func (e endpoint) String() string {
+	return string(e)
+}
+
 const (
 	api    string = "https://api.pinboard.in/"
 	ver    string = "v1"
 	apiurl string = api + ver
+
+	postsUpdate  endpoint = "/posts/update"
+	postsAdd     endpoint = "/posts/add"
+	postsDelete  endpoint = "/posts/delete"
+	postsGet     endpoint = "/posts/get"
+	postsRecent  endpoint = "/posts/recent"
+	postsDates   endpoint = "/posts/dates"
+	postsAll     endpoint = "/posts/all"
+	postsSuggest endpoint = "/posts/suggest"
+
+	tagsGet    endpoint = "/tags/get"
+	tagsRename endpoint = "/tags/rename"
+	tagsDelete endpoint = "/tags/delete"
+
+	userSecret   endpoint = "/user/secret"
+	userAPIToken endpoint = "/user/api_token"
+
+	notesList endpoint = "/notes/list"
+	notesID   endpoint = "/notes/"
 )
 
-var (
-	// Supported Pinboard API methods that map to endpoints.
-	endpoints = map[string]string{
-		"postsUpdate":  "/posts/update",
-		"postsAdd":     "/posts/add",
-		"postsDelete":  "/posts/delete",
-		"postsGet":     "/posts/get",
-		"postsRecent":  "/posts/recent",
-		"postsDates":   "/posts/dates",
-		"postsAll":     "/posts/all",
-		"postsSuggest": "/posts/suggest",
-		"tagsGet":      "/tags/get",
-		"tagsRename":   "/tags/rename",
-		"tagsDelete":   "/tags/delete",
-		"userSecret":   "/user/secret",
-		"userAPIToken": "/user/api_token",
-		"notesList":    "/notes/list",
-		"notesID":      "/notes/",
-	}
-
-	pinboardToken = ""
-)
-
-// get checks if endpoint is a valid Pinboard API endpoint and then
-// constructs a valid endpoint URL including the required 'auth_token'
+// get constructs a valid endpoint URL including the required 'auth_token'
 // and 'format' values along with any optional arguments found in the
 // options interface. It makes a http.Get request, checks HTTP status
 // codes and then finally returns the response body.
-func get(endpoint string, options interface{}) (body []byte, err error) {
-	ep, ok := endpoints[endpoint]
-	if !ok {
-		return nil, fmt.Errorf("error: %s is not a supported endpoint", endpoint)
-	}
-
-	u, err := url.Parse(apiurl + ep)
+func get(endpoint endpoint, token string, options interface{}) (body []byte, err error) {
+	u, err := url.Parse(apiurl + endpoint.String())
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +94,7 @@ func get(endpoint string, options interface{}) (body []byte, err error) {
 
 	// Add API token and format parameters before making request.
 	q := u.Query()
-	q.Add("auth_token", pinboardToken)
+	q.Add("auth_token", token)
 	q.Add("format", "json")
 	u.RawQuery = q.Encode()
 
@@ -116,7 +112,7 @@ func get(endpoint string, options interface{}) (body []byte, err error) {
 		return nil, fmt.Errorf("error: http %d", res.StatusCode)
 	}
 
-	body, err = ioutil.ReadAll(res.Body)
+	body, err = io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -202,10 +198,4 @@ func values(i interface{}) (url.Values, error) {
 	}
 
 	return uv, nil
-}
-
-// SetToken sets the API token required to make API calls. The token
-// is expected to be the full string "name:random".
-func SetToken(token string) {
-	pinboardToken = token
 }

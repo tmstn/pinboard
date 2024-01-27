@@ -5,6 +5,16 @@ import (
 	"errors"
 )
 
+type TagsResource struct {
+	token string
+}
+
+func NewTagsResource(token string) TagsResource {
+	return TagsResource{
+		token: token,
+	}
+}
+
 // Tags maps a tag name to the number of bookmarks that use that tag.
 type Tags map[string]string
 
@@ -14,10 +24,10 @@ type tagsResponse struct {
 	Result string `json:"result"`
 }
 
-// TagsGet returns a full list of the user's tags along with the
+// Get returns a full list of the user's tags along with the
 // number of times they were used.
-func TagsGet() (Tags, error) {
-	resp, err := get("tagsGet", nil)
+func (r TagsResource) Get() (Tags, error) {
+	resp, err := get(tagsGet, r.token, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -37,9 +47,9 @@ type tagsDeleteOptions struct {
 	Tag string
 }
 
-// TagsDelete deletes an existing tag.
-func TagsDelete(tag string) error {
-	resp, err := get("tagsDelete", &tagsDeleteOptions{Tag: tag})
+// Delete deletes an existing tag.
+func (r TagsResource) Delete(tag string) error {
+	resp, err := get(tagsDelete, r.token, &tagsDeleteOptions{Tag: tag})
 	if err != nil {
 		return err
 	}
@@ -64,9 +74,9 @@ type tagsRenameOptions struct {
 	New string
 }
 
-// TagsRename renames a tag, or folds it in to an existing tag.
-func TagsRename(old, new string) error {
-	resp, err := get("tagsRename", &tagsRenameOptions{
+// Rename renames a tag, or folds it in to an existing tag.
+func (r TagsResource) Rename(old, new string) error {
+	resp, err := get(tagsRename, r.token, &tagsRenameOptions{
 		Old: old,
 		New: new,
 	})

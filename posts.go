@@ -8,6 +8,16 @@ import (
 	"time"
 )
 
+type PostsResource struct {
+	token string
+}
+
+func NewPostsResource(token string) PostsResource {
+	return PostsResource{
+		token: token,
+	}
+}
+
 // Aliasing this to get a custom UnmarshalJSON because Pinboard
 // can return `"description": false` in the JSON output.
 type descriptionType string
@@ -112,12 +122,12 @@ type postsResponse struct {
 	Posts      []post `json:"posts,omitempty"`
 }
 
-// PostsUpdate returns the most recent time a bookmark was added,
+// Update returns the most recent time a bookmark was added,
 // updated or deleted.
 //
 // https://pinboard.in/api/#posts_update
-func PostsUpdate() (time.Time, error) {
-	resp, err := get("postsUpdate", nil)
+func (r PostsResource) Update() (time.Time, error) {
+	resp, err := get(postsUpdate, r.token, nil)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -172,10 +182,10 @@ type PostsAddOptions struct {
 	Toread bool
 }
 
-// PostsAdd adds a bookmark.
+// Add adds a bookmark.
 //
 // https://pinboard.in/api/#posts_add
-func PostsAdd(opt *PostsAddOptions) error {
+func (r PostsResource) Add(opt *PostsAddOptions) error {
 	if opt.URL == "" {
 		return errors.New("error: missing url")
 	}
@@ -184,7 +194,7 @@ func PostsAdd(opt *PostsAddOptions) error {
 		return errors.New("error: missing description")
 	}
 
-	resp, err := get("postsAdd", opt)
+	resp, err := get(postsAdd, r.token, opt)
 	if err != nil {
 		return err
 	}
@@ -208,11 +218,11 @@ type postsDeleteOptions struct {
 	URL string
 }
 
-// PostsDelete deletes the bookmark by url.
+// Delete deletes the bookmark by url.
 //
 // https://pinboard.in/api/#posts_delete
-func PostsDelete(url string) error {
-	resp, err := get("postsDelete", &postsDeleteOptions{URL: url})
+func (r PostsResource) Delete(url string) error {
+	resp, err := get(postsDelete, r.token, &postsDeleteOptions{URL: url})
 	if err != nil {
 		return err
 	}
@@ -247,15 +257,15 @@ type PostsGetOptions struct {
 	Meta bool
 }
 
-// PostsGet returns one or more posts (on a single day) matching the
+// Get returns one or more posts (on a single day) matching the
 // arguments. If no date or URL is given, date of most recent bookmark
 // will be used.Returns one or more posts on a single day matching the
 // arguments. If no date or URL is given, date of most recent bookmark
 // will be used.
 //
 // https://pinboard.in/api/#posts_get
-func PostsGet(opt *PostsGetOptions) ([]*Post, error) {
-	resp, err := get("postsGet", opt)
+func (r PostsResource) Get(opt *PostsGetOptions) ([]*Post, error) {
+	resp, err := get(postsGet, r.token, opt)
 	if err != nil {
 		return nil, err
 	}
@@ -289,12 +299,12 @@ type PostsRecentOptions struct {
 	Count int
 }
 
-// PostsRecent returns a list of the user's most recent posts,
+// Recent returns a list of the user's most recent posts,
 // filtered by tag.
 //
 // https://pinboard.in/api/#posts_recent
-func PostsRecent(opt *PostsRecentOptions) ([]*Post, error) {
-	resp, err := get("postsRecent", opt)
+func (r PostsResource) Recent(opt *PostsRecentOptions) ([]*Post, error) {
+	resp, err := get(postsRecent, r.token, opt)
 	if err != nil {
 		return nil, err
 	}
@@ -332,12 +342,12 @@ type PostsDatesOptions struct {
 	Tag []string
 }
 
-// PostsDates returns a list of dates with the number of posts at each
+// Dates returns a list of dates with the number of posts at each
 // date.
 //
 // https://pinboard.in/api/#posts_dates
-func PostsDates(opt *PostsDatesOptions) (map[string]int, error) {
-	resp, err := get("postsDates", opt)
+func (r PostsResource) Dates(opt *PostsDatesOptions) (map[string]int, error) {
+	resp, err := get(postsDates, r.token, opt)
 	if err != nil {
 		return nil, err
 	}
@@ -379,11 +389,11 @@ type PostsAllOptions struct {
 	Meta int
 }
 
-// PostsAll returns all bookmarks in the user's account.
+// All returns all bookmarks in the user's account.
 //
 // https://pinboard.in/api/#posts_all
-func PostsAll(opt *PostsAllOptions) ([]*Post, error) {
-	resp, err := get("postsAll", opt)
+func (r PostsResource) All(opt *PostsAllOptions) ([]*Post, error) {
+	resp, err := get(postsAll, r.token, opt)
 	if err != nil {
 		return nil, err
 	}
@@ -419,42 +429,24 @@ type postsSuggestOptions struct {
 	URL string
 }
 
-// PostsSuggestPopular returns a slice of popular tags for a given
-// URL. Popular tags are tags used site-wide for the url.
+// Suggest returns a slice of popular and recommended tags
+// for a given URL. Popular tags are tags used site-wide for the url;
+// recommended tags are drawn from the user's own tags.
 //
 // https://pinboard.in/api/#posts_suggest
-func PostsSuggestPopular(url string) ([]string, error) {
-	resp, err := get("postsSuggest", &postsSuggestOptions{URL: url})
+func (r PostsResource) Suggest(url string) (*postsSuggestResponse, error) {
+	resp, err := get(postsSuggest, r.token, &postsSuggestOptions{URL: url})
 	if err != nil {
 		return nil, err
 	}
 
-	var pr []postsSuggestResponse
+	var pr []*postsSuggestResponse
 	err = json.Unmarshal(resp, &pr)
 	if err != nil {
 		return nil, err
 	}
 
-	return pr[0].Popular, nil
-}
-
-// PostsSuggestRecommended returns a slice of recommended tags for a
-// given URL. Recommended tags are drawn from the user's own tags.
-//
-// https://pinboard.in/api/#posts_suggest
-func PostsSuggestRecommended(url string) ([]string, error) {
-	resp, err := get("postsSuggest", &postsSuggestOptions{URL: url})
-	if err != nil {
-		return nil, err
-	}
-
-	var pr []postsSuggestResponse
-	err = json.Unmarshal(resp, &pr)
-	if err != nil {
-		return nil, err
-	}
-
-	return pr[1].Recommended, nil
+	return pr[0], nil
 }
 
 // UnmarshalJSON converts a `descriptionType` into a `string`.

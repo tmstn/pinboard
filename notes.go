@@ -7,6 +7,16 @@ import (
 	"time"
 )
 
+type NotesResource struct {
+	token string
+}
+
+func NewNotesResource(token string) NotesResource {
+	return NotesResource{
+		token: token,
+	}
+}
+
 // Note represents a Pinboard note.
 type Note struct {
 	// Unique ID of the note.
@@ -51,9 +61,9 @@ type notesResponse struct {
 	Notes []note
 }
 
-// parseNote takes the note as JSON data returned from the Pinboard
-// API and translates them into Notes with proper types.
-func parseNote(n note) (*Note, error) {
+// parse translates the note as JSON data returned from the Pinboard
+// API into Notes with proper types.
+func (n note) parse() (*Note, error) {
 	var note Note
 
 	note.ID = n.ID
@@ -88,11 +98,11 @@ func parseNote(n note) (*Note, error) {
 	return &note, nil
 }
 
-// NotesList returns a list of the user's notes.
+// List returns a list of the user's notes.
 //
 // https://pinboard.in/api/#notes_list
-func NotesList() ([]*Note, error) {
-	resp, err := get("notesList", nil)
+func (r NotesResource) List() ([]*Note, error) {
+	resp, err := get(notesList, r.token, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +116,7 @@ func NotesList() ([]*Note, error) {
 	// Parse returned untyped notes into Notes.
 	var notes []*Note
 	for _, n := range nr.Notes {
-		note, err := parseNote(n)
+		note, err := n.parse()
 		if err != nil {
 			return nil, err
 		}
@@ -123,12 +133,12 @@ type notesIDOptions struct {
 	ID string
 }
 
-// NotesID returns an individual user note. The hash property is a 20
+// Get returns an individual user note. The hash property is a 20
 // character long sha1 hash of the note text.
 //
 // https://pinboard.in/api/#notes_get
-func NotesID(id string) (*Note, error) {
-	resp, err := get("notesID", &notesIDOptions{ID: id})
+func (r NotesResource) Get(id string) (*Note, error) {
+	resp, err := get(notesID, r.token, &notesIDOptions{ID: id})
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +149,7 @@ func NotesID(id string) (*Note, error) {
 		return nil, err
 	}
 
-	note, err := parseNote(n)
+	note, err := n.parse()
 	if err != nil {
 		return nil, err
 	}
